@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firework Show > Mike</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            position: relative;
+        }
+
+        #fireworkButton {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            background-color: #ff69b4;
+            color: white;
+            font-size: 18px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+            transition: background-color 0.3s, transform 0.3s;
+            z-index: 10;
+            font-family: 'Calibri', sans-serif;
+            font-weight: bold;
+        }
+
+        #fireworkButton:hover {
+            background-color: #ff1493;
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        .firework {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            bottom: 60px;
+            transform: translateX(-50%);
+            background: url('firework-icon.png') no-repeat center center;
+            background-size: cover;
+            animation: launch 1s forwards;
+        }
+
+        .trail {
+            position: absolute;
+            width: 2px;
+            height: 500px;
+            background-color: #FFE699;
+            bottom: 60px;
+            transform: translateX(-50%);
+            animation: trailMove 1s forwards;
+        }
+
+        .dot {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: url('heart-icon.png') no-repeat center center;
+            background-size: cover;
+            transform: scale(0);
+            opacity: 0;
+            animation: dotExplode 1.5s forwards;
+        }
+
+        @keyframes launch {
+            0% {
+                bottom: 60px;
+                opacity: 1;
+            }
+            100% {
+                bottom: var(--bottom);
+                opacity: 1;
+            }
+        }
+
+        @keyframes dotExplode {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) translate(var(--x), var(--y));
+                opacity: 0;
+            }
+        }
+
+        @keyframes trailMove {
+            0% {
+                height: 0;
+                opacity: 1;
+            }
+            100% {
+                height: 500px;
+                opacity: 0;
+            }
+        }
+
+        @keyframes rotate {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes sparkle {
+            0%, 100% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        #countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            font-family: 'Calibri', sans-serif;
+            color: white;
+            display: none;
+        }
+
+        #moon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 150px;
+            background: url('moon-icon.png') no-repeat center center;
+            background-size: cover;
+            animation: rotate 10s linear infinite;
+        }
+
+        .star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background-color: white;
+            border-radius: 50%;
+            animation: sparkle 5s infinite;
+        }
+
+        #finalMessage {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 40px;
+            font-family: 'Calibri', sans-serif;
+            font-weight: bold;
+            color: white;
+            display: none;
+        }
+
+        #fireworkCount {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            font-size: 18px;
+            font-family: 'Calibri', sans-serif;
+            color: white;
+            z-index: 10;
+        }
+
+        #elapsedTime {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 18px;
+            font-family: 'Calibri', sans-serif;
+            color: white;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+<button id="fireworkButton">放煙火！</button>
+<div id="countdown">3</div>
+<div id="moon"></div>
+<div id="finalMessage">煙火結束！</div>
+<div id="fireworkCount">發射次數: 0</div>
+<div id="elapsedTime">已開啟: 0秒</div>
+
+<script>
+    // Create stars in the background
+    function createStars(numStars) {
+        const body = document.body;
+        for (let i = 0; i < numStars; i++) {
+            const star = document.createElement("div");
+            star.classList.add("star");
+            const size = Math.random() * 3 + 2; 
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.top = `${Math.random() * 100}vh`;
+            star.style.left = `${Math.random() * 100}vw`;
+            body.appendChild(star);
+        }
+    }
+
+    createStars(60);
+
+    const button = document.getElementById("fireworkButton");
+    const countdown = document.getElementById("countdown");
+    const finalMessage = document.getElementById("finalMessage");
+    const fireworkCount = document.getElementById("fireworkCount");
+    const elapsedTime = document.getElementById("elapsedTime");
+
+    let fireworkCounter = 0;
+    let startTime = Date.now();
+
+    button.addEventListener("click", () => {
+        countdown.style.display = "block";
+        startCountdown(3);
+    });
+
+    function startCountdown(seconds) {
+        let timeLeft = seconds;
+        countdown.textContent = timeLeft;
+
+        const interval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                countdown.style.display = "none";
+                triggerFireworks();
+            } else {
+                countdown.textContent = timeLeft;
+            }
+        }, 1000);
+    }
+
+    function triggerFireworks() {
+        for (let i = 0; i < 100; i++) {
+            setTimeout(() => {
+                createFirework();
+            }, i * 300);
+        }
+        setTimeout(() => {
+            launchSpecialFireworks();
+        }, 100 * 300 + 1000);
+    }
+
+    function createFirework() {
+        // 隨機生成煙火的位置
+        const xPos = Math.random() * 100;
+        const yPos = Math.random() * 100;
+
+        // 設定煙火爆炸的高度範圍
+        const bottomPos = 65 + Math.random() * 15;
+
+        const firework = document.createElement("div");
+        firework.classList.add("firework");
+        firework.style.left = `${xPos}vw`;
+        firework.style.bottom = `60px`;
+        firework.style.setProperty('--bottom', `${bottomPos}vh`);   
+        document.body.appendChild(firework);
+
+        const trail = document.createElement("div");
+        trail.classList.add("trail");
+        trail.style.left = `${xPos}vw`;
+        trail.style.bottom = `60px`;
+        trail.style.setProperty('--bottom', `${bottomPos}vh`);
+        document.body.appendChild(trail);
+
+        setTimeout(() => {
+            createHeart(firework);
+        }, 800);
+        setTimeout(() => {
+            firework.remove();
+        }, 1800);
+        setTimeout(() => {
+            trail.remove();
+        }, 1500);
+
+        // Update firework count
+        fireworkCounter++;
+        fireworkCount.textContent = `發射次數: ${fireworkCounter}`;
+    }
+
+    function createHeart(firework) {
+        const numHearts = 60; // 點數量
+        const radius = 360; // 爆炸半徑
+
+        for (let i = 0; i < numHearts; i++) {
+            const dot = document.createElement("div");
+            dot.classList.add("dot");
+
+            // 設定煙火點的背景
+            dot.style.background = `url('heart-icon.png') no-repeat center center`;
+            dot.style.backgroundSize = 'cover';
+
+            // 計算心形的隨機位置
+            const angle = Math.random() * 2 * Math.PI;
+            const distance = Math.random() * radius;
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+
+            dot.style.setProperty('--x', `${x}px`);
+            dot.style.setProperty('--y', `${y}px`);
+
+            firework.appendChild(dot);
+
+            // 開始爆炸動畫
+            setTimeout(() => {
+                dot.style.animation = `dotExplode 1.5s forwards`;
+            }, Math.random() * 300);  // 隨機延遲使爆炸更自然
+
+            // 移除點元素
+            setTimeout(() => {
+                dot.remove();
+            }, 1000);
+        }
+    }
+
+    function launchSpecialFireworks() {
+
+    createSpecialFirework('5', '35vw');
+    createSpecialFirework('2', '50vw');
+    createSpecialFirework('0', '65vw');
+}
+
+function createSpecialFirework(shape, xPos) {
+    const firework = document.createElement("div");
+    firework.classList.add("firework");
+    firework.style.left = xPos;
+    firework.style.bottom = `100px`;
+    firework.style.setProperty('--bottom', `60vh`);
+    firework.style.background = `url('firework-${shape}.png') no-repeat center center`;
+    firework.style.backgroundSize = 'cover';
+    firework.style.width = '100px';
+    firework.style.height = '100px';
+    document.body.appendChild(firework);
+
+    const trail = document.createElement("div");
+    trail.classList.add("trail");
+    trail.style.left = xPos;
+    trail.style.bottom = `60px`;
+    document.body.appendChild(trail);
+
+    setTimeout(() => {
+        firework.remove();
+    }, 2000);
+    setTimeout(() => {
+        trail.remove();
+    }, 1500);
+}
+
+
+    function updateElapsedTime() {
+        const now = Date.now();
+        const elapsed = Math.floor((now - startTime) / 1000);
+        elapsedTime.textContent = `已開啟: ${elapsed}秒`;
+    }
+
+    setInterval(updateElapsedTime, 1000);
+</script>
+</body>
+</html>
